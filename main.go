@@ -24,9 +24,12 @@ func main() {
 
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
-	platform := os.Getenv("PLATFORM")
 	if dbURL == "" {
 		log.Fatal("DB_URL must be set")
+	}
+	platform := os.Getenv("PLATFORM")
+	if platform == "" {
+		log.Fatal("PLATFORM must be set")
 	}
 
 	dbConn, err := sql.Open("postgres", dbURL)
