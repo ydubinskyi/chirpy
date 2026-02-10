@@ -37,7 +37,7 @@ func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
 	}
 	cleaned := getCleanedBody(params.Body, badWords)
 
-	respondWithJSON(w, 200, returnVals{
+	respondWithJSON(w, http.StatusOK, returnVals{
 		CleanedBody: cleaned,
 	})
 }
