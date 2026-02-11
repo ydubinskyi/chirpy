@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -30,6 +32,12 @@ func MakeJWT(
 		Subject:   userID.String(),
 	})
 	return token.SignedString(signingKey)
+}
+
+func MakeRefreshToken() string {
+	token := make([]byte, 32)
+	rand.Read(token)
+	return hex.EncodeToString(token)
 }
 
 func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {

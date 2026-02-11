@@ -7,20 +7,21 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/ydubinskyi/chirpy/internal/auth"
+	"github.com/ydubinskyi/chirpy/internal/database"
 )
 
 func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
-		Email            string `json:"email"`
-		Password         string `json:"password"`
-		ExpiresInSeconds *int   `json:"expired_in_seconds"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 	type userWithToken struct {
-		ID        uuid.UUID `json:"id"`
-		CreatedAt time.Time `json:"created_at"`
-		UpdatedAt time.Time `json:"updated_at"`
-		Email     string    `json:"email"`
-		Token     string    `json:"token"`
+		ID           uuid.UUID `json:"id"`
+		CreatedAt    time.Time `json:"created_at"`
+		UpdatedAt    time.Time `json:"updated_at"`
+		Email        string    `json:"email"`
+		Token        string    `json:"token"`
+		RefreshToken string    `json:"refresh_token"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -43,23 +44,28 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expiresIn := time.Duration(time.Hour)
-
-	if params.ExpiresInSeconds != nil && *params.ExpiresInSeconds > 0 && *params.ExpiresInSeconds < 3600 {
-		expiresIn = time.Duration(*params.ExpiresInSeconds * int(time.Second))
+	token, err := auth.MakeJWT(user.ID, cfg.jwtSecret, time.Duration(time.Hour))
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
+		return
 	}
 
-	token, err := auth.MakeJWT(user.ID, cfg.jwtSecret, expiresIn)
+	refreshToken, err := cfg.db.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
+		Token:     auth.MakeRefreshToken(),
+		UserID:    user.ID,
+		ExpiresAt: time.Now().UTC().Add(time.Hour * 24 * 60),
+	})
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Something went wrong", err)
 		return
 	}
 
 	respondWithJSON(w, http.StatusOK, userWithToken{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
-		Token:     token,
+		ID:           user.ID,
+		CreatedAt:    user.CreatedAt,
+		UpdatedAt:    user.UpdatedAt,
+		Email:        user.Email,
+		Token:        token,
+		RefreshToken: refreshToken.Token,
 	})
 }
